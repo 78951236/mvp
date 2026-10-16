@@ -1,6 +1,6 @@
 """数据层：SQLite 三张表（semesters / courses / reminders）的建档与增删改查。
 
-照 03-数据模型.md 实现。网页（app.py）和提醒程序（notifier.py）读写同一个文件：
+照 docs/03-数据模型.md 实现。网页（app.py）和提醒程序（notifier.py）读写同一个文件：
 data/class_schedule.db
 """
 

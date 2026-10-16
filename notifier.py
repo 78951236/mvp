@@ -1,6 +1,6 @@
 """提醒程序（阶段 2）：常驻后台，到点弹 Windows 系统通知。
 
-照 04-提醒规则.md 实现：
+照 docs/04-提醒规则.md 实现：
     venv\\Scripts\\python notifier.py                 # 常驻；**默认缩到右下角托盘**，不弹窗口打扰你
     venv\\Scripts\\python notifier.py --no-tray       # 不缩托盘，就在当前命令行里跑（看日志用）
     venv\\Scripts\\python notifier.py --now           # 立刻检查一次并退出（测试用）
