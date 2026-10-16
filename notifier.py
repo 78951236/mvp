@@ -1,13 +1,13 @@
 """提醒程序（阶段 2）：常驻后台，到点弹 Windows 系统通知。
 
 照 04-提醒规则.md 实现：
-    venv\\Scripts\\python notifier.py                 # 常驻，每 30 秒读一次库
+    venv\\Scripts\\python notifier.py                 # 常驻；**默认缩到右下角托盘**，不弹窗口打扰你
+    venv\\Scripts\\python notifier.py --no-tray       # 不缩托盘，就在当前命令行里跑（看日志用）
     venv\\Scripts\\python notifier.py --now           # 立刻检查一次并退出（测试用）
-    venv\\Scripts\\python notifier.py --tray          # 缩到右下角托盘
     venv\\Scripts\\python notifier.py --autostart     # 设置开机自启
     venv\\Scripts\\python notifier.py --no-autostart  # 取消开机自启
 
-不带参数时的默认：**不缩托盘、不设开机自启**（只跑一个控制台循环，日志打在屏幕上）。
+不带参数时的默认：**缩到右下角托盘、不设开机自启**（默认值按需求方 2026-10-16 的拍板）。
 """
 
 import argparse
@@ -190,7 +190,7 @@ def emit(notification, quiet=False):
 # 主循环
 # --------------------------------------------------------------------------
 
-def run_loop(interval=DEFAULT_INTERVAL, tray=False):
+def run_loop(interval=DEFAULT_INTERVAL, tray=True):
     fired = set()
     if not notifications_enabled():
         print("!! 系统通知开关是关着的（HKCU\\...\\PushNotifications\\ToastEnabled = 0），")
@@ -253,9 +253,9 @@ def main(argv=None):
     parser.add_argument("--interval", type=int, default=DEFAULT_INTERVAL,
                         help="每隔多少秒读一次数据库（默认 %d）" % DEFAULT_INTERVAL)
     tray = parser.add_mutually_exclusive_group()
-    tray.add_argument("--tray", dest="tray", action="store_true", help="缩到右下角托盘")
-    tray.add_argument("--no-tray", dest="tray", action="store_false", help="不缩托盘（默认）")
-    parser.set_defaults(tray=False)
+    tray.add_argument("--tray", dest="tray", action="store_true", help="缩到右下角托盘（默认）")
+    tray.add_argument("--no-tray", dest="tray", action="store_false", help="不缩托盘，在当前命令行里跑")
+    parser.set_defaults(tray=True)
     auto = parser.add_mutually_exclusive_group()
     auto.add_argument("--autostart", dest="autostart", action="store_true", help="设置开机自启")
     auto.add_argument("--no-autostart", dest="autostart", action="store_false", help="取消开机自启")
