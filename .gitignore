@@ -24,3 +24,7 @@ tmp/
 # 项目虚拟环境与运行时数据
 venv/
 data/*.db
+
+# Python 缓存
+__pycache__/
+*.pyc
