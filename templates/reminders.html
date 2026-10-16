@@ -8,11 +8,12 @@
         <h1 class="page-title">设置</h1>
         <div class="crumb">设置 ▸ 提醒</div>
     </div>
+    <button class="btn btn-primary" id="addReminderBtn">+ 添加提醒</button>
 </div>
 
-<div class="empty-state">
-    <div class="big">提醒功能还没做</div>
-    <div>按 05-开发计划，它排在阶段 2（R2）。<br>
-        规则和字段已经定好，见 04-提醒规则.md 和 03-数据模型.md 第四节。</div>
-</div>
+<div class="reminder-list" id="reminderList"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reminders.js') }}"></script>
 {% endblock %}

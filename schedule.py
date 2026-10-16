@@ -209,6 +209,180 @@ def build_week_view(semester, courses, today=None):
 
 
 # --------------------------------------------------------------------------
+# 提醒（照 04-提醒规则.md）
+# --------------------------------------------------------------------------
+
+EVENT_LABELS = {
+    "new_week": "新的一周到来",
+    "new_day": "新的一天到来",
+    "class_start": "每一节课上课",
+    "class_end": "每一节课下课",
+}
+
+SCOPE_LABELS = {
+    "next_class": "下一节课",
+    "today_remaining": "今天还没上的课",
+    "today_all": "今天的所有课",
+    "last_class": "上一节课",
+    "today_done": "今天上过的课",
+    "tomorrow": "明天的课",
+}
+
+EXTRA_LABELS = {
+    "name": "名称",
+    "teacher": "任课老师",
+    "time": "上下课时间",
+    "location": "上课地点",
+    "weekdays": "周几",
+    "note": "备注",
+}
+
+# 通知正文里各属性的前缀（04 文档第四节的例子：老师：/时间：/地点：）
+EXTRA_PREFIX = {"teacher": "老师", "time": "时间", "location": "地点",
+                "weekdays": "周几", "note": "备注"}
+
+
+def _at(day, hhmm):
+    """把 'HH:MM' 贴到某一天上，得到 datetime。"""
+    h, m = str(hhmm).split(":")[:2]
+    return datetime.datetime.combine(day, datetime.time(int(h), int(m)))
+
+
+def trigger_delta(reminder):
+    """时间差：「前」为负，「后」为正。"""
+    minutes = int(reminder.get("offset_hours") or 0) * 60 + int(reminder.get("offset_minutes") or 0)
+    return datetime.timedelta(minutes=-minutes if reminder.get("direction") == "before" else minutes)
+
+
+def anchor_moments(reminder, day, courses):
+    """一天的锚点时刻（04 文档第二节）。
+
+    new_week → 该日所在周的周一 00:00；new_day → 该日 00:00；
+    class_start / class_end → 当天每节课的上下课时刻（一天多条）。
+    """
+    event = reminder.get("event")
+    if event == "new_week":
+        return [datetime.datetime.combine(first_monday(day), datetime.time(0, 0))]
+    if event == "new_day":
+        return [datetime.datetime.combine(day, datetime.time(0, 0))]
+    if event in ("class_start", "class_end"):
+        field = "start_time" if event == "class_start" else "end_time"
+        return [_at(day, c[field]) for c in courses if course_occurs_on(c, day)]
+    return []
+
+
+def reminder_triggers(reminder, day, courses):
+    """某条提醒在某一天上产生的所有触发时刻。"""
+    delta = trigger_delta(reminder)
+    return [{"moment": a + delta, "anchor": a, "day": day}
+            for a in anchor_moments(reminder, day, courses)]
+
+
+def scan_triggers(reminders, courses, semester, now, window_seconds=60):
+    """算出 [now, now+window) 之间该触发的提醒（04 文档第六节）。
+
+    - 只看「默认学期范围内」的日子：假期 / 学期外当天按没课处理，一条都不弹
+    - 前后各看一天，覆盖「时间差导致触发时刻跨天」的情况
+    - 关掉的提醒（enabled=0）不参与
+    """
+    lo = now
+    hi = now + datetime.timedelta(seconds=window_seconds)
+    start = parse_date(semester["start_date"]) if semester else None
+    end = parse_date(semester["end_date"]) if semester else None
+
+    hits = []
+    for offset in (-1, 0, 1):
+        day = now.date() + datetime.timedelta(days=offset)
+        if start and not (start <= day <= end):
+            continue
+        for reminder in reminders:
+            if not int(reminder.get("enabled") or 0):
+                continue
+            for trig in reminder_triggers(reminder, day, courses):
+                if lo <= trig["moment"] < hi:
+                    hits.append({**trig, "reminder": reminder})
+
+    seen, unique = set(), []
+    for hit in hits:                      # 同一提醒同一时刻只算一次（new_week 会被三天重复命中）
+        key = (hit["reminder"]["id"], hit["moment"].isoformat())
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(hit)
+    unique.sort(key=lambda h: (h["moment"], h["reminder"]["id"]))
+    return unique
+
+
+def scope_courses(scope, courses, moment):
+    """提醒范围：通知里放哪些课，按触发那一刻动态算（04 文档第三节）。"""
+    day = moment.date() + datetime.timedelta(days=1) if scope == "tomorrow" else moment.date()
+    today = sorted((c for c in courses if course_occurs_on(c, day)),
+                   key=lambda c: time_to_min(c["start_time"]))
+    now_min = moment.hour * 60 + moment.minute
+
+    if scope in ("tomorrow", "today_all"):
+        return today
+    if scope == "today_remaining":
+        return [c for c in today if time_to_min(c["start_time"]) > now_min]
+    if scope == "today_done":
+        return [c for c in today if time_to_min(c["end_time"]) <= now_min]
+    if scope == "next_class":
+        cand = [c for c in today if time_to_min(c["start_time"]) >= now_min]
+        return [min(cand, key=lambda c: time_to_min(c["start_time"]))] if cand else []
+    if scope == "last_class":
+        cand = [c for c in today if time_to_min(c["end_time"]) <= now_min]
+        return [max(cand, key=lambda c: time_to_min(c["end_time"]))] if cand else []
+    return []
+
+
+def format_notification(scope, courses, extra_fields):
+    """通知正文（04 文档第四节）。不选附加信息 → 只显示范围标题。"""
+    title = "【%s】" % SCOPE_LABELS.get(scope, scope)
+    if not courses:
+        return title
+    fields = [f.strip() for f in str(extra_fields or "").split(",") if f.strip() in EXTRA_LABELS]
+
+    blocks = []
+    for i, c in enumerate(courses):
+        head = title if i == 0 else ""
+        if "name" in fields:
+            head += str(c["name"])
+        lines = [head] if head else []
+        for field in ("teacher", "time", "location", "weekdays", "note"):
+            if field not in fields:
+                continue
+            if field == "time":
+                value = "%s - %s" % (c["start_time"], c["end_time"])
+            elif field == "weekdays":
+                value = weekdays_to_text(c["weekdays"])
+            else:
+                value = str(c.get(field) or "")
+            lines.append("%s：%s" % (EXTRA_PREFIX[field], value))
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
+def build_notification(hits, courses):
+    """把同一时刻命中的多条提醒合并成一条通知（04 文档第六节 / 01 文档确认记录）。
+
+    范围内一门课都没有 → 这条提醒不发（04 文档第三节补充规则）。
+    返回 (标题, 正文)，没有任何可发内容时返回 (None, None)。
+    """
+    blocks = []
+    for hit in hits:
+        reminder = hit["reminder"]
+        in_scope = scope_courses(reminder.get("scope"), courses, hit["moment"])
+        if not in_scope:
+            continue
+        block = format_notification(reminder.get("scope"), in_scope, reminder.get("extra_fields"))
+        if block not in blocks:           # 同样的话不重复写两遍
+            blocks.append(block)
+    if not blocks:
+        return None, None
+    return "课表提醒", "\n\n".join(blocks)
+
+
+# --------------------------------------------------------------------------
 # 自测（M4 验收）：venv\Scripts\python schedule.py
 # --------------------------------------------------------------------------
 
@@ -289,6 +463,98 @@ def _self_test():
     view2 = build_week_view(sem, both, today=parse_date("2026-09-07"))
     check("冲突时课表不画这两门", sum(len(x["blocks"]) for x in view2["days"]), 0)
     check("冲突时坐标轴回落到兜底", (view2["axis"]["start_min"], view2["axis"]["end_min"]), FALLBACK_AXIS)
+
+    # ---------------------------------------------------------- 提醒（04 文档）
+    # 04 文档第三节的算例：现在是 09:50，今天 08:00~09:40 已上完高数，10:00 上 C 语言
+    gao = {"id": 1, "name": "高等数学", "teacher": "张老师", "weekdays": "1",
+           "start_date": "2026-09-01", "end_date": "2027-01-15",
+           "start_time": "08:00", "end_time": "09:40", "location": "3号教学楼201",
+           "note": "带计算器"}
+    cyy = {"id": 2, "name": "C语言程序设计", "teacher": "李老师", "weekdays": "1",
+           "start_date": "2026-09-01", "end_date": "2027-01-15",
+           "start_time": "10:00", "end_time": "11:40", "location": "实验楼B302", "note": ""}
+    monday = parse_date("2026-10-12")                 # 2026-10-12 是周一
+    M = datetime.datetime(2026, 10, 12, 9, 50)        # 09:50
+
+    check("下一节课 = C语言", [c["name"] for c in scope_courses("next_class", [gao, cyy], M)], ["C语言程序设计"])
+    check("今天还没上的课", [c["name"] for c in scope_courses("today_remaining", [gao, cyy], M)], ["C语言程序设计"])
+    check("今天的所有课（按时间排序）",
+          [c["name"] for c in scope_courses("today_all", [gao, cyy], M)], ["高等数学", "C语言程序设计"])
+    check("上一节课 = 高数", [c["name"] for c in scope_courses("last_class", [gao, cyy], M)], ["高等数学"])
+    check("今天上过的课", [c["name"] for c in scope_courses("today_done", [gao, cyy], M)], ["高等数学"])
+    check("明天的课（周二没课 → 空）", scope_courses("tomorrow", [gao, cyy], M), [])
+    check("今天的课都上完了 → 没有下一节课",
+          scope_courses("next_class", [gao, cyy], datetime.datetime(2026, 10, 12, 12, 0)), [])
+
+    # 触发时刻（04 文档第二节的表）
+    def one_trigger(event, h, m, direction, day=monday):
+        r = {"id": 1, "event": event, "offset_hours": h, "offset_minutes": m,
+             "direction": direction, "scope": "today_all", "extra_fields": "", "enabled": 1}
+        return [t["moment"] for t in reminder_triggers(r, day, [gao, cyy])]
+
+    check("新的一天到来 6:00后 → 每天 06:00",
+          one_trigger("new_day", 6, 0, "after"), [datetime.datetime(2026, 10, 12, 6, 0)])
+    check("新的一周到来 0:00后 → 周一 00:00",
+          one_trigger("new_week", 0, 0, "after"), [datetime.datetime(2026, 10, 12, 0, 0)])
+    check("周日算同一条周一锚点（10-18 周日 → 10-12 周一）",
+          one_trigger("new_week", 0, 0, "after", parse_date("2026-10-18")),
+          [datetime.datetime(2026, 10, 12, 0, 0)])
+    check("每一节课上课 0:30前 → 每节课前 30 分钟",
+          one_trigger("class_start", 0, 30, "before"),
+          [datetime.datetime(2026, 10, 12, 7, 30), datetime.datetime(2026, 10, 12, 9, 30)])
+    check("每一节课下课 0:10后 → 每节课后 10 分钟",
+          one_trigger("class_end", 0, 10, "after"),
+          [datetime.datetime(2026, 10, 12, 9, 50), datetime.datetime(2026, 10, 12, 11, 50)])
+
+    sem_real = {"id": 1, "seq_no": 1, "start_date": "2026-09-01", "end_date": "2027-01-15", "is_default": 1}
+    sem_holiday = {"id": 2, "seq_no": 2, "start_date": "2027-02-20", "end_date": "2027-07-10", "is_default": 0}
+
+    def scan_reminders(hour, minute, second=0, day=(2026, 10, 12), enabled=1, sem=None, direction="before"):
+        r = {"id": 7, "event": "class_start", "offset_hours": 0, "offset_minutes": 30,
+             "direction": direction, "scope": "next_class", "extra_fields": "name,location",
+             "enabled": enabled}
+        now = datetime.datetime(day[0], day[1], day[2], hour, minute, second)
+        return scan_triggers([r], [gao, cyy], sem or sem_real, now)
+
+    check("07:29:40 扫一分钟 → 命中 07:30 的课前提醒", len(scan_reminders(7, 29, 40)), 1)
+    check("命中时刻正确", scan_reminders(7, 29, 40)[0]["moment"], datetime.datetime(2026, 10, 12, 7, 30))
+    check("07:30:00 那一刻也算命中（左闭右开）", len(scan_reminders(7, 30, 0)), 1)
+    check("07:30:59 不重复命中（窗口已过）", scan_reminders(7, 30, 59), [])
+    check("放假当天一条都不弹（学期 2027-02-20 起）", scan_reminders(7, 29, 40, sem=sem_holiday), [])
+    check("关掉的提醒不触发", scan_reminders(7, 29, 40, enabled=0), [])
+
+    # 跨天：新的一天到来 3:00 前 → 前一天 21:00
+    r_cross = {"id": 8, "event": "new_day", "offset_hours": 3, "offset_minutes": 0,
+               "direction": "before", "scope": "today_all", "extra_fields": "name", "enabled": 1}
+    cross = scan_triggers([r_cross], [gao, cyy], sem_real,
+                          datetime.datetime(2026, 10, 11, 20, 59, 40))
+    check("跨天触发：10-11 21:00 命中 10-12 的「新的一天」", len(cross), 1)
+    check("跨天触发时刻", cross[0]["moment"], datetime.datetime(2026, 10, 11, 21, 0))
+
+    # 通知正文（04 文档第五节的两条例子的结构）
+    check("只选名称+地点（例1 的形状）",
+          format_notification("next_class", [gao], "name,location"),
+          "【下一节课】高等数学\n地点：3号教学楼201")
+    check("选时间+名称（例2 的形状，两门课）",
+          format_notification("today_all", [gao, cyy], "time,name"),
+          "【今天的所有课】高等数学\n时间：08:00 - 09:40\n\n"
+          "C语言程序设计\n时间：10:00 - 11:40")
+    check("不选附加信息 → 只显示范围标题", format_notification("next_class", [gao], ""), "【下一节课】")
+
+    # 合并 + 范围内没课不发
+    hit_early = {"moment": datetime.datetime(2026, 10, 12, 7, 30), "reminder": {
+        "id": 1, "scope": "next_class", "extra_fields": "name,location"}}
+    hit_late = {"moment": datetime.datetime(2026, 10, 12, 7, 30), "reminder": {
+        "id": 2, "scope": "today_all", "extra_fields": "name"}}
+    title, body = build_notification([hit_early, hit_late], [gao, cyy])
+    check("同一时刻两条提醒合并成一条（标题）", title, "课表提醒")
+    check("合并后的正文块数", body.count("【"), 2)
+    empty_title, empty_body = build_notification(
+        [{"moment": datetime.datetime(2026, 10, 13, 20, 0), "reminder": {
+            "id": 3, "scope": "tomorrow", "extra_fields": "name"}}], [gao, cyy])
+    check("范围内一门课都没有 → 不发通知", (empty_title, empty_body), (None, None))
+    check("两条一模一样的提醒不重复写",
+          build_notification([hit_early, hit_early], [gao, cyy])[1].count("【"), 1)
 
     print("\n结果:", "全部通过" if ok else "有失败项")
     return ok

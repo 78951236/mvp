@@ -287,6 +287,123 @@ def api_delete_course(cid):
 
 
 # --------------------------------------------------------------------------
+# 接口：提醒（阶段 2 · R2）
+# --------------------------------------------------------------------------
+
+def reminder_options():
+    return {
+        "events": [{"value": k, "label": v} for k, v in sched.EVENT_LABELS.items()],
+        "scopes": [{"value": k, "label": v} for k, v in sched.SCOPE_LABELS.items()],
+        "extras": [{"value": k, "label": v} for k, v in sched.EXTRA_LABELS.items()],
+    }
+
+
+def reminder_payload(r):
+    out = dict(r)
+    out["enabled"] = bool(r["enabled"])
+    out["event_label"] = sched.EVENT_LABELS.get(r["event"], r["event"])
+    out["scope_label"] = sched.SCOPE_LABELS.get(r["scope"], r["scope"])
+    out["direction_label"] = "前" if r["direction"] == "before" else "后"
+    out["offset_text"] = "%02d:%02d" % (r["offset_hours"], r["offset_minutes"])
+    out["extra_list"] = [x.strip() for x in str(r["extra_fields"] or "").split(",") if x.strip()]
+    out["extra_labels"] = [sched.EXTRA_LABELS[x] for x in out["extra_list"] if x in sched.EXTRA_LABELS]
+    return out
+
+
+def validate_reminder(data):
+    event = str(data.get("event") or "").strip()
+    if event not in sched.EVENT_LABELS:
+        return None, "请选择事件"
+    scope = str(data.get("scope") or "").strip()
+    if scope not in sched.SCOPE_LABELS:
+        return None, "请选择提醒范围"
+    direction = str(data.get("direction") or "before").strip()
+    if direction not in ("before", "after"):
+        return None, "时间差只能选「前」或「后」"
+    try:
+        hours = int(data.get("offset_hours") or 0)
+        minutes = int(data.get("offset_minutes") or 0)
+    except (TypeError, ValueError):
+        return None, "时间差请填数字"
+    if not 0 <= hours <= 23:
+        return None, "时间差的「时」只能填 0 ~ 23"
+    if not 0 <= minutes <= 59:
+        return None, "时间差的「分」只能填 0 ~ 59"
+
+    raw_extras = data.get("extra_fields")
+    if isinstance(raw_extras, (list, tuple, set)):
+        candidates = [str(x) for x in raw_extras]
+    else:
+        candidates = str(raw_extras or "").replace(" ", ",").split(",")
+
+    items, bad = [], []
+    for raw in candidates:
+        raw = raw.strip()
+        if not raw:
+            continue
+        if raw not in sched.EXTRA_LABELS:
+            bad.append(raw)
+        elif raw not in items:
+            items.append(raw)
+    if bad:
+        return None, "附加信息里有不认识的项：%s" % "、".join(bad)
+
+    enabled = 1 if str(data.get("enabled", 1)).lower() in ("1", "true", "yes") else 0
+    return {"event": event, "offset_hours": hours, "offset_minutes": minutes,
+            "direction": direction, "scope": scope,
+            "extra_fields": ",".join(items), "enabled": enabled}, None
+
+
+@app.get("/api/reminders")
+def api_list_reminders():
+    return jsonify({"ok": True, "reminders": [reminder_payload(r) for r in models.list_reminders()],
+                    "options": reminder_options()})
+
+
+@app.post("/api/reminders")
+def api_create_reminder():
+    cleaned, err = validate_reminder(request.get_json(silent=True) or {})
+    if err:
+        return bad_request(err)
+    rid = models.create_reminder(cleaned)
+    row = next((r for r in models.list_reminders() if r["id"] == rid), None)
+    return jsonify({"ok": True, "reminder": reminder_payload(row)}), 201
+
+
+@app.put("/api/reminders/<int:rid>")
+def api_update_reminder(rid):
+    rows = [r for r in models.list_reminders() if r["id"] == rid]
+    if not rows:
+        return jsonify({"ok": False, "error": "提醒不存在"}), 404
+    cleaned, err = validate_reminder(request.get_json(silent=True) or {})
+    if err:
+        return bad_request(err)
+    models.update_reminder(rid, cleaned)
+    row = next((r for r in models.list_reminders() if r["id"] == rid), None)
+    return jsonify({"ok": True, "reminder": reminder_payload(row)})
+
+
+@app.post("/api/reminders/<int:rid>/toggle")
+def api_toggle_reminder(rid):
+    rows = [r for r in models.list_reminders() if r["id"] == rid]
+    if not rows:
+        return jsonify({"ok": False, "error": "提醒不存在"}), 404
+    current = dict(rows[0])
+    current["enabled"] = 0 if current["enabled"] else 1
+    models.update_reminder(rid, current)
+    row = next((r for r in models.list_reminders() if r["id"] == rid), None)
+    return jsonify({"ok": True, "reminder": reminder_payload(row)})
+
+
+@app.delete("/api/reminders/<int:rid>")
+def api_delete_reminder(rid):
+    if not any(r["id"] == rid for r in models.list_reminders()):
+        return jsonify({"ok": False, "error": "提醒不存在"}), 404
+    models.delete_reminder(rid)
+    return jsonify({"ok": True})
+
+
+# --------------------------------------------------------------------------
 # 接口：课表
 # --------------------------------------------------------------------------
 

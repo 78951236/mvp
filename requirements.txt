@@ -1,1 +1,5 @@
 flask
+
+# 提醒程序 --tray 用（可选；不装也能跑，只是没有托盘图标）
+pystray
+pillow

@@ -466,6 +466,50 @@ body.nav-collapsed .rail button {
 .detail-row { display: flex; gap: 10px; margin-bottom: 8px; }
 .detail-row .k { color: var(--muted); min-width: 72px; }
 
+/* ------------------------------------------------- 提醒列表（设置 → 提醒） */
+
+.reminder-list { display: flex; flex-direction: column; gap: 12px; }
+
+.reminder-card { padding: 12px 18px; }
+
+.reminder-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.reminder-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.reminder-card.is-off { opacity: .55; }
+
+.reminder-card .switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+}
+.reminder-card.is-off .switch { color: var(--danger); }
+
+.reminder-card .ops { display: flex; gap: 8px; }
+
+.chip {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 1px 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
 /* ------------------------------------------------- 手机 / 平板 */
 
 @media (max-width: 1023px) {
