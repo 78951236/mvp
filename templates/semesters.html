@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}设置 · 学期{% endblock %}
+{% block mobile_title %}设置 · 学期{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">设置</h1>
+        <div class="crumb">设置 ▸ 学期</div>
+    </div>
+    <button class="btn btn-primary" id="addSemesterBtn">+ 添加学期</button>
+</div>
+
+<div class="sem-list" id="semList"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/semesters.js') }}"></script>
+{% endblock %}

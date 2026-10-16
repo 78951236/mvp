@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}课程设置{% endblock %}
+{% block mobile_title %}课程设置{% endblock %}
+
+{% block content %}
+<!-- 这一页不属于菜单里任何一页：左侧不点亮任何一项（nav 传空） -->
+<div class="card course-head">
+    <div class="field">
+        <label>学期序号</label>
+        <input type="number" min="1" step="1" id="seqNo" value="{{ semester.seq_no }}">
+    </div>
+    <div class="field">
+        <label>起始日期</label>
+        <input type="date" id="startDate" value="{{ semester.start_date }}">
+    </div>
+    <div class="field">
+        <label>结束日期</label>
+        <input type="date" id="endDate" value="{{ semester.end_date }}">
+    </div>
+    <button class="btn btn-outline" id="saveSemesterBtn">保存</button>
+    <div style="flex:1 1 auto"></div>
+    <button class="btn btn-primary" id="addCourseBtn">+ 添加课程</button>
+</div>
+
+<div class="course-list" id="courseList"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.SEMESTER = {{ semester|tojson }};</script>
+<script src="{{ url_for('static', filename='js/courses.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,514 @@
+/* 课表 · 样式表
+   配色、按钮、卡片、弹窗全部照 02-界面与交互设计.md，不自由发挥。 */
+
+:root {
+    --blue: #2F6FED;
+    --blue-light: #EAF1FF;
+    --bg: #F7FAFF;
+    --card: #FFFFFF;
+    --text: #1F2937;
+    --muted: #6B7280;
+    --line: #D8E5FF;
+    --danger: #E04545;
+    --radius: 8px;
+    --btn-radius: 6px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    /* 页面不可拖动 / 不可缩放 */
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+}
+
+a { color: var(--blue); }
+
+/* ---------------------------------------------------------------- 布局 */
+
+.shell {
+    display: flex;
+    min-height: 100vh;
+    align-items: stretch;
+}
+
+/* 左侧菜单栏：约 1/5 宽（最小 200px，最大 260px） */
+.sidebar {
+    flex: 0 0 auto;
+    width: 20%;
+    min-width: 200px;
+    max-width: 260px;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 12px;
+}
+
+body.nav-collapsed .sidebar { display: none; }
+
+.sidebar nav { flex: 1 1 auto; }
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.nav-item:hover { background: var(--blue-light); }
+.nav-item.active { background: var(--blue-light); color: var(--blue); font-weight: 600; }
+
+.nav-group-title { cursor: pointer; }
+.nav-group-title .caret { color: var(--muted); font-size: 12px; transition: transform .15s; }
+.nav-group.open .nav-group-title .caret { transform: rotate(90deg); }
+
+.nav-sub { margin: 0 0 4px 0; padding: 0; }
+.nav-sub .nav-item { padding-left: 26px; font-size: 13px; }
+.nav-sub.collapsed { display: none; }
+
+.sidebar-foot { border-top: 1px solid var(--line); padding-top: 10px; }
+
+.collapse-btn {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--muted);
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    font: inherit;
+}
+
+.collapse-btn:hover { background: var(--blue-light); color: var(--blue); }
+
+/* 收起后左侧那条细的展开按钮 */
+.rail { display: none; }
+body.nav-collapsed .rail {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 26px;
+    padding-top: 18px;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+}
+body.nav-collapsed .rail button {
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--blue);
+    border-radius: 0 var(--btn-radius) var(--btn-radius) 0;
+    cursor: pointer;
+    padding: 8px 4px;
+    font: inherit;
+}
+
+.content {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 20px 24px 40px;
+}
+
+/* 窄屏顶栏（☰） */
+.mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+}
+
+.mobile-topbar .hamburger {
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--blue);
+    border-radius: var(--btn-radius);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.mobile-topbar .title { font-weight: 600; }
+
+.overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 41, 55, .45);
+    z-index: 40;
+}
+
+/* ---------------------------------------------------------- 通用组件 */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font: inherit;
+    border-radius: var(--btn-radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    background: var(--card);
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: #2760d4; }
+
+.btn-outline { background: var(--card); color: var(--blue); border-color: var(--blue); }
+.btn-outline:hover { background: var(--blue-light); }
+
+.btn-danger { background: var(--card); color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: #FDECEC; }
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--blue);
+    text-decoration: underline;
+    padding: 4px 2px;
+    cursor: pointer;
+    font: inherit;
+}
+.btn-link:disabled,
+.btn-link.is-default { color: var(--muted); text-decoration: none; cursor: default; }
+
+.btn-sm { padding: 4px 10px; font-size: 13px; }
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px rgba(47, 111, 237, .06);
+}
+
+.page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.page-title { font-size: 20px; font-weight: 600; margin: 0; }
+.crumb { color: var(--muted); font-size: 13px; }
+
+.empty-state {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--muted);
+    text-align: center;
+}
+
+.empty-state .big { font-size: 16px; }
+
+/* 弹窗 */
+.modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 41, 55, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 60;
+}
+
+.modal {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    width: 100%;
+    max-width: 560px;
+    max-height: 88vh;
+    overflow: auto;
+    box-shadow: 0 10px 30px rgba(31, 41, 55, .18);
+}
+
+.modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.modal-close {
+    border: none;
+    background: none;
+    font-size: 18px;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-body { padding: 16px 18px; }
+.modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 12px 18px 16px;
+}
+
+/* 表单 */
+.field { margin-bottom: 12px; }
+.field label { display: block; margin-bottom: 4px; color: var(--text); }
+.field .hint { color: var(--muted); font-size: 12px; }
+.field input[type=text],
+.field input[type=number],
+.field input[type=date],
+.field input[type=time],
+.field select,
+.field textarea {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--btn-radius);
+    font: inherit;
+    color: var(--text);
+    background: #fff;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+.field-row { display: flex; gap: 12px; }
+.field-row > * { flex: 1 1 0; min-width: 0; }
+
+.weekday-picker { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.weekday-picker label { display: inline-flex; align-items: center; gap: 4px; }
+
+.form-error {
+    display: none;
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    border: 1px solid var(--danger);
+    border-radius: var(--btn-radius);
+    background: #FDECEC;
+    color: var(--danger);
+    font-size: 13px;
+}
+
+/* 提示条 */
+.toast {
+    position: fixed;
+    left: 50%;
+    top: 18px;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: #fff;
+    padding: 9px 16px;
+    border-radius: var(--btn-radius);
+    z-index: 90;
+    font-size: 13px;
+    box-shadow: 0 6px 18px rgba(31, 41, 55, .25);
+}
+
+/* ------------------------------------------------------ 设置 → 学期 */
+
+.sem-list { display: flex; flex-direction: column; gap: 12px; }
+
+.sem-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+}
+
+.sem-card .seq { font-size: 16px; font-weight: 600; }
+.sem-card .dates { color: var(--muted); margin-left: 12px; }
+.sem-card .ops { display: flex; align-items: center; gap: 10px; }
+.badge-default {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    font-size: 12px;
+    color: var(--blue);
+    background: var(--blue-light);
+    border-radius: 10px;
+}
+
+/* --------------------------------------------------- 课程设置页 */
+
+.course-head {
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.course-head .field { margin-bottom: 0; }
+.course-head .field input { width: 130px; }
+
+/* 卡片宽度 = 内容区的 8 分之 7 */
+.course-list { width: 87.5%; display: flex; flex-direction: column; gap: 12px; }
+
+.course-card {
+    position: relative;
+    padding: 14px 18px 14px 30px;
+}
+.course-card .dot {
+    position: absolute;
+    left: 12px;
+    top: 20px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+}
+.course-card .line1 { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.course-card .name { font-size: 16px; font-weight: 600; }
+.course-card .meta { color: var(--muted); }
+.course-card .ops {
+    position: absolute;
+    right: 18px;
+    bottom: 14px;
+    display: flex;
+    gap: 8px;
+}
+.course-card.conflict { border-color: var(--danger); }
+.course-card.conflict .warn { color: var(--danger); font-size: 13px; margin-top: 6px; }
+
+/* ------------------------------------------------------- 课表页 */
+
+.sched-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.sched-head .center { color: var(--muted); }
+
+.grid-area {
+    position: relative;
+    padding-bottom: 26px;
+    /* 不可拖动、不可缩放 */
+    touch-action: pan-y;
+    user-select: none;
+}
+
+.grid-cols {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    position: relative;
+    height: var(--grid-h, 840px);
+}
+
+/* 不画格子框：列本身透明，页面上只有课程方块（01 文档 5.3） */
+.grid-col { position: relative; }
+
+.block {
+    position: absolute;
+    left: 1px;
+    right: 1px;
+    border-radius: 6px;
+    border: 1px solid rgba(31, 41, 55, .12);
+    padding: 3px 5px;
+    overflow: hidden;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.25;
+    word-break: break-all;
+}
+.block:hover { filter: brightness(.96); }
+
+.grid-labels {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+}
+.grid-labels div {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+}
+.grid-labels div.is-today { color: var(--blue); font-weight: 600; }
+
+/* 课程详情弹窗 */
+.detail-row { display: flex; gap: 10px; margin-bottom: 8px; }
+.detail-row .k { color: var(--muted); min-width: 72px; }
+
+/* ------------------------------------------------- 手机 / 平板 */
+
+@media (max-width: 1023px) {
+    .sidebar { width: 22%; min-width: 180px; }
+    .content { padding: 16px; }
+}
+
+@media (max-width: 767px) {
+    .mobile-topbar { display: flex; }
+
+    /* 菜单栏变抽屉，默认收起，从左侧滑出，盖在内容上 */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 72%;
+        max-width: 280px;
+        min-width: 0;
+        z-index: 50;
+        transform: translateX(-102%);
+        transition: transform .2s ease-out;
+        box-shadow: 0 0 24px rgba(31, 41, 55, .2);
+    }
+    body.drawer-open .sidebar { transform: translateX(0); }
+    body.drawer-open .overlay { display: block; }
+    body.nav-collapsed .sidebar { display: flex; }   /* 手机上用抽屉，不用收起逻辑 */
+    body.nav-collapsed .rail { display: none; }
+
+    .content { padding: 12px 10px 32px; }
+
+    .page-title { font-size: 17px; }
+    .sem-card { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .sem-card .ops { width: 100%; }
+    .course-list { width: 100%; }
+    .course-card .ops { position: static; margin-top: 10px; }
+    .course-card { padding-left: 28px; }
+
+    /* 课表 7 列压缩变瘦 */
+    .grid-cols, .grid-labels { gap: 2px; }
+    .block { font-size: 11px; padding: 2px 2px; left: 0; right: 0; border-radius: 4px; }
+    .grid-labels div { font-size: 11px; }
+    .sched-head { flex-wrap: wrap; }
+    .sched-head .center { order: 3; width: 100%; }
+    .field-row { flex-direction: column; gap: 0; }
+}

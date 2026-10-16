@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}课表{% endblock %}
+{% block mobile_title %}课表{% endblock %}
+
+{% block content %}
+<div id="schedRoot"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/schedule.js') }}"></script>
+{% endblock %}

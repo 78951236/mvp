@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>{% block title %}课表{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="mobile-topbar">
+    <button class="hamburger" id="hamburger" aria-label="打开菜单">☰</button>
+    <span class="title">{% block mobile_title %}课表{% endblock %}</span>
+</div>
+
+<div class="shell">
+    <aside class="sidebar" id="sidebar">
+        <nav>
+            <a class="nav-item {% if nav == 'schedule' %}active{% endif %}" href="/schedule">课表</a>
+
+            <div class="nav-group open" id="navGroup">
+                <div class="nav-item nav-group-title" id="navGroupTitle">
+                    设置 <span class="caret">▸</span>
+                </div>
+                <div class="nav-sub" id="navSub">
+                    <a class="nav-item {% if nav == 'semesters' %}active{% endif %}"
+                       href="/settings/semesters">学期</a>
+                    <a class="nav-item {% if nav == 'reminders' %}active{% endif %}"
+                       href="/settings/reminders">提醒</a>
+                </div>
+            </div>
+        </nav>
+        <div class="sidebar-foot">
+            <button class="collapse-btn" id="collapseBtn">收起 ◀</button>
+        </div>
+    </aside>
+
+    <div class="rail"><button id="expandBtn" title="展开菜单">▶</button></div>
+
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<div class="overlay" id="overlay"></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
