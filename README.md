@@ -80,6 +80,20 @@ venv\Scripts\python service.py status     # 看看现在什么在跑
 
 两个服务也可以单独控制：`--web-only` / `--notifier-only`。
 
+### 开机自启（可选，建议开）
+
+想让电脑一登录就自动跑起来，不用每次双击：
+
+```
+venv\Scripts\python service.py autostart on     # 网页服务 + 提醒程序 都设成开机自启
+venv\Scripts\python service.py autostart        # 看当前状态
+venv\Scripts\python service.py autostart off    # 取消
+```
+
+- 写的是**当前用户**的启动项（注册表 Run 键），**不需要管理员权限**
+- 登录 Windows 时两个都在后台起来，**不会弹任何窗口**
+- 只想要其中一个：加 `--web-only` 或 `--notifier-only`
+
 ### 打开网页
 
 ```
@@ -220,6 +234,7 @@ Class_schedule/
 
 | tag | 内容 |
 | --- | --- |
+| `v1.0` | **项目正式完工**：加 README 使用说明、一键启停脚本（含开机自启）、依赖版本钉死 |
 | `v0.1-mvp` | 能看当周课表、能录课改课删课 |
 | `v0.2-notify` | 提醒程序 + 提醒设置界面 |
 | `v0.3-polish` | 冲突标红、异常兜底、界面细节、备份脚本 |

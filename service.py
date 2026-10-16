@@ -85,6 +85,63 @@ def lan_ip():
 
 
 # --------------------------------------------------------------------------
+# 开机自启（HKCU 的 Run 键，不需要管理员权限）
+# --------------------------------------------------------------------------
+
+AUTOSTART_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+WEB_AUTOSTART_NAME = "ClassScheduleWeb"
+
+
+def web_autostart_command():
+    """网页服务的自启命令。
+
+    这里必须用 pythonw：Run 键是在登录时直接拉起进程的，用 python.exe 会**弹一个黑窗口**出来。
+    pythonw 没有控制台，app.py 的那些 print 会变成静默无操作（不会报错），
+    网页服务和请求日志都照常工作，只是没有窗口。
+    """
+    return '"%s" "%s"' % (PYW, os.path.join(BASE, "app.py"))
+
+
+def _read_run_value(name):
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, AUTOSTART_KEY) as key:
+            return winreg.QueryValueEx(key, name)[0]
+    except Exception:
+        return None
+
+
+def _write_run_value(name, command):
+    import winreg
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, AUTOSTART_KEY, 0, winreg.KEY_ALL_ACCESS) as key:
+        if command is None:
+            try:
+                winreg.DeleteValue(key, name)
+            except FileNotFoundError:
+                pass
+        else:
+            winreg.SetValueEx(key, name, 0, winreg.REG_SZ, command)
+
+
+def web_autostart_state():
+    return _read_run_value(WEB_AUTOSTART_NAME)
+
+
+def set_web_autostart(enabled):
+    _write_run_value(WEB_AUTOSTART_NAME, web_autostart_command() if enabled else None)
+
+
+def notifier_autostart_state():
+    import notifier
+    return notifier.autostart_state()
+
+
+def set_notifier_autostart(enabled):
+    import notifier
+    notifier.set_autostart(enabled)
+
+
+# --------------------------------------------------------------------------
 # 启动
 # --------------------------------------------------------------------------
 
@@ -223,9 +280,38 @@ def cmd_stop(port, web_only, notifier_only):
     return 0
 
 
+def cmd_autostart(value, web_only, notifier_only):
+    if value == "status":
+        print("  网页服务自启：%s" % (web_autostart_state() or "没开"))
+        print("  提醒程序自启：%s" % (notifier_autostart_state() or "没开"))
+        return 0
+
+    enable = value == "on"
+    if not notifier_only:
+        set_web_autostart(enable)
+        print("  网页服务自启：%s" % ("已打开" if enable else "已关闭"))
+    if not web_only:
+        set_notifier_autostart(enable)
+        print("  提醒程序自启：%s" % ("已打开" if enable else "已关闭"))
+
+    print()
+    if enable:
+        if web_only:
+            who = "网页服务"
+        elif notifier_only:
+            who = "提醒程序"
+        else:
+            who = "两个"
+        print("  下次登录 Windows 时%s会自己起来（没有窗口，不会弹东西）。" % who)
+        print("  现在想立刻用，还是跑一遍：venv\\Scripts\\python service.py start")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="课表服务的一键启停")
-    parser.add_argument("action", choices=["start", "stop", "status"], help="要做的事")
+    parser.add_argument("action", choices=["start", "stop", "status", "autostart"], help="要做的事")
+    parser.add_argument("value", nargs="?", default=None,
+                        help="autostart 用：on / off（不填就是看状态）")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="网页服务端口（默认 %d）" % DEFAULT_PORT)
     parser.add_argument("--web-only", action="store_true", help="只动网页服务")
     parser.add_argument("--notifier-only", action="store_true", help="只动提醒程序")
@@ -241,6 +327,11 @@ def main(argv=None):
         return cmd_status(args.port)
     if args.action == "start":
         return cmd_start(args.port, args.web_only, args.notifier_only, args.no_browser)
+    if args.action == "autostart":
+        if args.value not in (None, "on", "off", "status"):
+            print("autostart 只认 on / off（不填就是看状态），你写的是：%s" % args.value)
+            return 2
+        return cmd_autostart(args.value or "status", args.web_only, args.notifier_only)
     return cmd_stop(args.port, args.web_only, args.notifier_only)
 
 
