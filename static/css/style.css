@@ -208,6 +208,14 @@ body.nav-collapsed .rail button {
     box-shadow: 0 1px 3px rgba(47, 111, 237, .06);
 }
 
+/* 桌面 hover：卡片和按钮有轻微的背景/阴影变化（02 文档 五） */
+@media (hover: hover) and (min-width: 768px) {
+    .card:hover {
+        border-color: #C3D8FF;
+        box-shadow: 0 3px 10px rgba(47, 111, 237, .14);
+    }
+}
+
 .page-head {
     display: flex;
     align-items: center;
@@ -391,6 +399,14 @@ body.nav-collapsed .rail button {
     border: 1px solid var(--line);
 }
 .course-card .line1 { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+/* 长课名截断，不要把卡片撑变形（P3） */
+.course-card .line1 .name {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .course-card .name { font-size: 16px; font-weight: 600; }
 .course-card .meta { color: var(--muted); }
 .course-card .ops {
@@ -448,6 +464,15 @@ body.nav-collapsed .rail button {
     word-break: break-all;
 }
 .block:hover { filter: brightness(.96); }
+
+/* 长课名截断：方块里最多铺几行，多的省略号（P3） */
+.block .block-name {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-all;
+}
 
 .grid-labels {
     display: grid;

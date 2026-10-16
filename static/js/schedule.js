@@ -25,7 +25,7 @@
             'background:' + App.escapeHtml(block.color) + ';' +
             'color:' + App.escapeHtml(block.text_color) + ';"' +
             ' title="' + App.escapeHtml(block.name) + '">' +
-            App.escapeHtml(blockLabel(block)) +
+            '<span class="block-name">' + App.escapeHtml(blockLabel(block)) + '</span>' +
             '</div>';
     }
 
@@ -76,6 +76,11 @@
         });
 
         root.querySelectorAll('.block').forEach((el) => {
+            // 按方块实际高度算能铺几行，让超长课名以省略号收尾（P3）
+            const heightPx = el.getBoundingClientRect().height;
+            const lines = Math.max(1, Math.floor((heightPx - 6) / 16.25));   // 6=上下 padding，16.25=13px×1.25 行高
+            const nameEl = el.querySelector('.block-name');
+            if (nameEl) nameEl.style.webkitLineClamp = lines;
             el.addEventListener('click', () => showBlockDetail(Number(el.dataset.id)));
         });
     }

@@ -9,6 +9,8 @@
 import argparse
 import datetime
 import os
+import socket
+import sqlite3
 import sys
 
 from flask import Flask, jsonify, redirect, render_template, request
@@ -77,6 +79,17 @@ def norm_weekdays(value):
 
 def bad_request(msg):
     return jsonify({"ok": False, "error": msg}), 400
+
+
+@app.errorhandler(sqlite3.DatabaseError)
+def handle_db_error(exc):
+    """数据库半路坏了，也给一句人能看懂的话，不甩堆栈（P2）。"""
+    print("数据库出错：%s" % exc)
+    return jsonify({
+        "ok": False,
+        "error": "数据库文件读不出来了（可能坏了）。把 data\\class_schedule.db 改名或删掉，"
+                 "重启后会建一个空库；有备份就用备份还原。",
+    }), 500
 
 
 def date_cn(text):
@@ -424,6 +437,38 @@ def api_schedule():
 # 启动
 # --------------------------------------------------------------------------
 
+def lan_ip():
+    """探一下本机在局域网里的地址（手机要用这个地址连）。探不到返回 None。"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.connect(("8.8.8.8", 80))          # 只是让系统挑一条默认路由，不会真的发包
+        return sock.getsockname()[0]
+    except OSError:
+        return None
+    finally:
+        sock.close()
+
+
+def port_free(host, port):
+    """先探一下端口能不能独占绑上。
+
+    为什么要自己探：Werkzeug 的开发服务器开了 SO_REUSEADDR，而 **Windows 上
+    SO_REUSEADDR 允许两个进程同时绑同一个端口**（跟 Linux 不一样），结果是第二个
+    服务悄悄起来、和第一个抢请求，还不报错。用 SO_EXCLUSIVEADDRUSE 探一次就能
+    提前发现，给一句人能看懂的话。
+    """
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):      # 只有 Windows 有
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        probe.bind((host if host != "0.0.0.0" else "0.0.0.0", port))
+        return True, None
+    except OSError as exc:
+        return False, exc
+    finally:
+        probe.close()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="课表网页服务")
     parser.add_argument("--port", type=int, default=5000, help="网页服务端口（默认 5000）")
@@ -431,17 +476,46 @@ def main(argv=None):
                         help="监听地址（默认 0.0.0.0，手机才能连；只给本机用就填 127.0.0.1）")
     args = parser.parse_args(argv)
 
-    tables = models.init_db()
+    # 数据库读不出来时，给一句人能看懂的话，而不是报错堆栈（P2）
+    try:
+        tables = models.init_db()
+    except sqlite3.DatabaseError as exc:
+        print("启动失败：数据库文件读不出来。")
+        print("  文件：%s" % models.DB_PATH)
+        print("  原因：%s" % exc)
+        print("  处理：把这个文件改名或删掉，重新启动会建一个空库；")
+        print("        要是之前备份过 data 目录，也可以拿备份还原回来。")
+        return 1
+
+    # 端口先探一次（P2）：Windows 上 SO_REUSEADDR 会让第二个服务也绑上同一个端口
+    ok, why = port_free(args.host, args.port)
+    if not ok:
+        print("启动失败：端口 %d 用不了。" % args.port)
+        print("  原因：%s" % why)
+        print("  多半是已经开着一个课表服务了 —— 浏览器直接打开 http://127.0.0.1:%d 就能用，" % args.port)
+        print("  想同时再开一个就换个端口：python app.py --port %d" % (args.port + 1))
+        return 1
+
     print("数据库:", models.DB_PATH)
     print("已建表:", ", ".join(tables))
-    print(f"服务地址: http://127.0.0.1:{args.port}")
+    print("本机访问: http://127.0.0.1:%d" % args.port)
+
     if args.host == "0.0.0.0":
-        print("局域网访问: http://<本机IP>:%d（手机连同一个 WiFi）" % args.port)
+        ip = lan_ip()
+        if ip:
+            print("手机访问: http://%s:%d  （手机连同一个 WiFi，地址栏敲这个）" % (ip, args.port))
+        else:
+            print("手机访问: 没能自动认出本机 IP，命令行里敲 ipconfig 找 IPv4 地址，再用 http://那个地址:%d" % args.port)
+    else:
+        print("提示: 现在只听 %s，手机连不上；想让手机也能开就加 --host 0.0.0.0" % args.host)
+
     try:
         app.run(host=args.host, port=args.port, debug=False)
-    except OSError as exc:
-        print(f"\n启动失败：{exc}")
-        print(f"端口 {args.port} 可能已被占用，换一个端口试试：python app.py --port {args.port + 1}")
+    except (OSError, SystemExit) as exc:
+        # Werkzeug 撞端口时是「打印原始错误 + sys.exit(1)」，SystemExit 不是 OSError
+        print()
+        print("启动失败：服务没起来（%s）。" % (exc or "端口被占"))
+        print("  换个端口试试：python app.py --port %d" % (args.port + 1))
         return 1
     return 0
 
