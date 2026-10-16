@@ -180,7 +180,7 @@ def index():
 
 @app.route("/schedule")
 def page_schedule():
-    return render_template("schedule.html", nav="")
+    return render_template("schedule.html", nav="schedule")
 
 
 @app.route("/settings/semesters")

@@ -1,5 +1,11 @@
 /* 课表 · 样式表
-   配色、按钮、卡片、弹窗全部照 02-界面与交互设计.md，不自由发挥。 */
+   风格：淡雅液态玻璃拟态（淡雅档，2026-10-16 与需求方确认）。
+   配色、按钮、卡片、弹窗全部照 02-界面与交互设计.md，不自由发挥。
+
+   玻璃的三个前提（改了就失效，别乱动）：
+     1) 页面底色是彩色渐变 —— 玻璃要有东西可透才看得出来
+     2) 面板半透明 + backdrop-filter 模糊
+     3) 不支持 backdrop-filter 的浏览器走 §降级（不透明白），不会糊成一团 */
 
 :root {
     --blue: #2F6FED;
@@ -10,17 +16,43 @@
     --muted: #6B7280;
     --line: #D8E5FF;
     --danger: #E04545;
-    --radius: 8px;
-    --btn-radius: 6px;
+    --radius: 16px;
+    --btn-radius: 10px;
+
+    /* ---- 液态玻璃（淡雅档）共 4 个旋钮 ---- */
+    --g-blur: 10px;                      /* 模糊半径：越大越"厚" */
+    --g-sat: 170%;                       /* 饱和度：让透出来的颜色更透亮 */
+    --g-alpha: .68;                      /* 面板白度：越大越实、越小越透 */
+    --g-edge: rgba(255, 255, 255, .5);   /* 玻璃边缘的亮线 */
+    --g-shadow: 0 10px 30px rgba(31, 60, 130, .06);
+    --g-gloss: inset 0 1px 0 rgba(255, 255, 255, .85);
+
+    /* 课程方块（玻璃质感，颜色由 JS 注入 --c） */
+    --b-alpha: .72;                      /* 方块透出课程色的程度：不是全透明 */
 }
 
 * { box-sizing: border-box; }
 
-html, body {
+html {
     margin: 0;
     padding: 0;
     height: 100%;
-    background: var(--bg);
+    /* 渐变铺不到的地方兜底，防止露出白边 */
+    background: #EEF4FF;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    /* 彩色光晕底：玻璃的必要条件，四团颜色 + 一层浅蓝渐变 */
+    background:
+        radial-gradient(circle at 12% 18%, #7FB0FF 0%, transparent 42%),
+        radial-gradient(circle at 88% 12%, #C4AEFF 0%, transparent 38%),
+        radial-gradient(circle at 72% 88%, #7FE6DE 0%, transparent 42%),
+        radial-gradient(circle at 25% 92%, #FFC2DA 0%, transparent 36%),
+        linear-gradient(155deg, #EAF1FF 0%, #F7FAFF 55%, #EFF4FF 100%);
+    background-attachment: fixed;
     color: var(--text);
     font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
     font-size: 14px;
@@ -32,22 +64,41 @@ html, body {
 
 a { color: var(--blue); }
 
+/* ------------------------------------------------- 玻璃面板（共用配方） */
+
+.sidebar,
+.mobile-topbar,
+.card,
+.modal,
+.grid-area,
+.sched-head,
+.collapse-btn,
+body.nav-collapsed .rail button {
+    background: rgba(255, 255, 255, var(--g-alpha));
+    -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
+    backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
+    border: 1px solid var(--g-edge);
+    box-shadow: var(--g-shadow), var(--g-gloss);
+}
+
 /* ---------------------------------------------------------------- 布局 */
 
 .shell {
     display: flex;
     min-height: 100vh;
     align-items: stretch;
+    gap: 16px;
+    padding: 16px;
 }
 
-/* 左侧菜单栏：约 1/5 宽（最小 200px，最大 260px） */
+/* 左侧菜单栏：约 1/5 宽（最小 200px，最大 260px）
+   玻璃风格下它是一块独立的玻璃板（原来是贴边的白条） */
 .sidebar {
     flex: 0 0 auto;
     width: 20%;
     min-width: 200px;
     max-width: 260px;
-    background: var(--card);
-    border-right: 1px solid var(--line);
+    border-radius: var(--radius);
     display: flex;
     flex-direction: column;
     padding: 16px 12px;
@@ -74,8 +125,13 @@ body.nav-collapsed .sidebar { display: none; }
     text-decoration: none;
 }
 
-.nav-item:hover { background: var(--blue-light); }
-.nav-item.active { background: var(--blue-light); color: var(--blue); font-weight: 600; }
+.nav-item:hover { background: rgba(255, 255, 255, .55); }
+.nav-item.active {
+    background: rgba(47, 111, 237, .16);
+    color: var(--blue);
+    font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
+}
 
 .nav-group-title { cursor: pointer; }
 .nav-group-title .caret { color: var(--muted); font-size: 12px; transition: transform .15s; }
@@ -85,37 +141,31 @@ body.nav-collapsed .sidebar { display: none; }
 .nav-sub .nav-item { padding-left: 26px; font-size: 13px; }
 .nav-sub.collapsed { display: none; }
 
-.sidebar-foot { border-top: 1px solid var(--line); padding-top: 10px; }
+.sidebar-foot { border-top: 1px solid rgba(255, 255, 255, .55); padding-top: 10px; }
 
 .collapse-btn {
     width: 100%;
     padding: 8px;
-    border: 1px solid var(--line);
-    background: var(--card);
     color: var(--muted);
     border-radius: var(--btn-radius);
     cursor: pointer;
     font: inherit;
 }
 
-.collapse-btn:hover { background: var(--blue-light); color: var(--blue); }
+.collapse-btn:hover { color: var(--blue); }
 
-/* 收起后左侧那条细的展开按钮 */
+/* 收起后左侧那条细的展开按钮（也是一小块玻璃） */
 .rail { display: none; }
 body.nav-collapsed .rail {
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    width: 26px;
-    padding-top: 18px;
-    background: var(--card);
-    border-right: 1px solid var(--line);
+    width: 30px;
+    padding-top: 16px;
 }
 body.nav-collapsed .rail button {
-    border: 1px solid var(--line);
-    background: var(--card);
     color: var(--blue);
-    border-radius: 0 var(--btn-radius) var(--btn-radius) 0;
+    border-radius: var(--btn-radius);
     cursor: pointer;
     padding: 8px 4px;
     font: inherit;
@@ -124,7 +174,7 @@ body.nav-collapsed .rail button {
 .content {
     flex: 1 1 auto;
     min-width: 0;
-    padding: 20px 24px 40px;
+    padding: 4px 4px 32px;
 }
 
 /* 窄屏顶栏（☰） */
@@ -133,16 +183,15 @@ body.nav-collapsed .rail button {
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
+    border-radius: var(--radius);
     position: sticky;
-    top: 0;
+    top: 12px;
     z-index: 30;
 }
 
 .mobile-topbar .hamburger {
-    border: 1px solid var(--line);
-    background: var(--card);
+    border: 1px solid var(--g-edge);
+    background: rgba(255, 255, 255, .5);
     color: var(--blue);
     border-radius: var(--btn-radius);
     font-size: 18px;
@@ -157,7 +206,9 @@ body.nav-collapsed .rail button {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(31, 41, 55, .45);
+    background: rgba(31, 41, 55, .32);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
     z-index: 40;
 }
 
@@ -171,21 +222,29 @@ body.nav-collapsed .rail button {
     padding: 7px 14px;
     font: inherit;
     border-radius: var(--btn-radius);
-    border: 1px solid transparent;
+    border: 1px solid var(--g-edge);
     cursor: pointer;
-    background: var(--card);
+    background: rgba(255, 255, 255, .5);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
     color: var(--text);
     white-space: nowrap;
+    box-shadow: var(--g-gloss);
 }
 
-.btn-primary { background: var(--blue); color: #fff; }
-.btn-primary:hover { background: #2760d4; }
+.btn-primary {
+    background: linear-gradient(180deg, #4F8BFF, var(--blue));
+    color: #fff;
+    border-color: rgba(255, 255, 255, .55);
+    box-shadow: 0 6px 18px rgba(47, 111, 237, .38), var(--g-gloss);
+}
+.btn-primary:hover { background: linear-gradient(180deg, #4780f0, #2760d4); }
 
-.btn-outline { background: var(--card); color: var(--blue); border-color: var(--blue); }
-.btn-outline:hover { background: var(--blue-light); }
+.btn-outline { background: rgba(255, 255, 255, .5); color: var(--blue); border-color: rgba(47, 111, 237, .45); }
+.btn-outline:hover { background: rgba(234, 241, 255, .75); }
 
-.btn-danger { background: var(--card); color: var(--danger); border-color: var(--danger); }
-.btn-danger:hover { background: #FDECEC; }
+.btn-danger { background: rgba(255, 255, 255, .5); color: var(--danger); border-color: rgba(224, 69, 69, .45); }
+.btn-danger:hover { background: rgba(253, 236, 236, .75); }
 
 .btn-link {
     background: none;
@@ -195,6 +254,9 @@ body.nav-collapsed .rail button {
     padding: 4px 2px;
     cursor: pointer;
     font: inherit;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
 }
 .btn-link:disabled,
 .btn-link.is-default { color: var(--muted); text-decoration: none; cursor: default; }
@@ -202,17 +264,14 @@ body.nav-collapsed .rail button {
 .btn-sm { padding: 4px 10px; font-size: 13px; }
 
 .card {
-    background: var(--card);
-    border: 1px solid var(--line);
     border-radius: var(--radius);
-    box-shadow: 0 1px 3px rgba(47, 111, 237, .06);
 }
 
 /* 桌面 hover：卡片和按钮有轻微的背景/阴影变化（02 文档 五） */
 @media (hover: hover) and (min-width: 768px) {
     .card:hover {
-        border-color: #C3D8FF;
-        box-shadow: 0 3px 10px rgba(47, 111, 237, .14);
+        border-color: rgba(255, 255, 255, .8);
+        box-shadow: 0 14px 34px rgba(31, 60, 130, .13), var(--g-gloss);
     }
 }
 
@@ -244,7 +303,9 @@ body.nav-collapsed .rail button {
 .modal-mask {
     position: fixed;
     inset: 0;
-    background: rgba(31, 41, 55, .45);
+    background: rgba(30, 45, 80, .28);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -253,14 +314,12 @@ body.nav-collapsed .rail button {
 }
 
 .modal {
-    background: var(--card);
     border-radius: var(--radius);
-    border: 1px solid var(--line);
     width: 100%;
     max-width: 560px;
     max-height: 88vh;
     overflow: auto;
-    box-shadow: 0 10px 30px rgba(31, 41, 55, .18);
+    box-shadow: 0 18px 50px rgba(31, 60, 130, .22), var(--g-gloss);
 }
 
 .modal-head {
@@ -268,7 +327,7 @@ body.nav-collapsed .rail button {
     align-items: center;
     justify-content: space-between;
     padding: 14px 18px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid rgba(255, 255, 255, .55);
     font-size: 16px;
     font-weight: 600;
 }
@@ -290,7 +349,7 @@ body.nav-collapsed .rail button {
     padding: 12px 18px 16px;
 }
 
-/* 表单 */
+/* 表单：输入框也是玻璃的（半透明白），文字保持深色好读 */
 .field { margin-bottom: 12px; }
 .field label { display: block; margin-bottom: 4px; color: var(--text); }
 .field .hint { color: var(--muted); font-size: 12px; }
@@ -302,18 +361,32 @@ body.nav-collapsed .rail button {
 .field textarea {
     width: 100%;
     padding: 7px 9px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--g-edge);
     border-radius: var(--btn-radius);
     font: inherit;
     color: var(--text);
-    background: #fff;
+    background: rgba(255, 255, 255, .72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
 }
 .field input:focus, .field select:focus, .field textarea:focus {
     outline: none;
     border-color: var(--blue);
+    background: rgba(255, 255, 255, .9);
 }
 .field-row { display: flex; gap: 12px; }
 .field-row > * { flex: 1 1 0; min-width: 0; }
+
+/* 颜色选择器（课程编辑里的「颜色」）：跟别的输入框一个观感 */
+.field input[type=color] {
+    width: 46px;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid var(--g-edge);
+    border-radius: var(--btn-radius);
+    background: rgba(255, 255, 255, .72);
+    cursor: pointer;
+}
 
 .weekday-picker { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .weekday-picker label { display: inline-flex; align-items: center; gap: 4px; }
@@ -324,7 +397,7 @@ body.nav-collapsed .rail button {
     padding: 8px 10px;
     border: 1px solid var(--danger);
     border-radius: var(--btn-radius);
-    background: #FDECEC;
+    background: rgba(253, 236, 236, .85);
     color: var(--danger);
     font-size: 13px;
 }
@@ -335,10 +408,13 @@ body.nav-collapsed .rail button {
     left: 50%;
     top: 18px;
     transform: translateX(-50%);
-    background: var(--text);
+    background: rgba(31, 41, 55, .88);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     color: #fff;
     padding: 9px 16px;
     border-radius: var(--btn-radius);
+    border: 1px solid rgba(255, 255, 255, .25);
     z-index: 90;
     font-size: 13px;
     box-shadow: 0 6px 18px rgba(31, 41, 55, .25);
@@ -365,7 +441,8 @@ body.nav-collapsed .rail button {
     padding: 1px 8px;
     font-size: 12px;
     color: var(--blue);
-    background: var(--blue-light);
+    background: rgba(47, 111, 237, .16);
+    border: 1px solid rgba(255, 255, 255, .5);
     border-radius: 10px;
 }
 
@@ -389,6 +466,7 @@ body.nav-collapsed .rail button {
     position: relative;
     padding: 14px 18px 14px 30px;
 }
+/* 左侧有色圆 = 课程颜色：颜色要认得出来，所以圆本身不透明，外面套一圈玻璃亮边 */
 .course-card .dot {
     position: absolute;
     left: 12px;
@@ -396,7 +474,8 @@ body.nav-collapsed .rail button {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 1px solid var(--line);
+    border: 1px solid rgba(255, 255, 255, .8);
+    box-shadow: 0 0 0 1px rgba(31, 41, 55, .08), inset 0 1px 0 rgba(255, 255, 255, .5);
 }
 .course-card .line1 { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 /* 长课名截断，不要把卡片撑变形（P3） */
@@ -427,12 +506,16 @@ body.nav-collapsed .rail button {
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 12px;
+    padding: 12px 18px;
+    border-radius: var(--radius);
 }
 .sched-head .center { color: var(--muted); }
 
+/* 「装进玻璃板」：课表整块是一块玻璃板（2026-10-16 需求方拍板） */
 .grid-area {
     position: relative;
-    padding-bottom: 26px;
+    padding: 16px 18px 14px;
+    border-radius: var(--radius);
     /* 不可拖动、不可缩放 */
     touch-action: pan-y;
     user-select: none;
@@ -449,12 +532,16 @@ body.nav-collapsed .rail button {
 /* 不画格子框：列本身透明，页面上只有课程方块（01 文档 5.3） */
 .grid-col { position: relative; }
 
+/* === 课程方块：玻璃质感 ===
+   颜色 = 用户给这门课选的课程色，由 JS 注入 --c（"r,g,b" 三个数）：
+   半透明底色（--b-alpha）让颜色透出来 + 一层自上而下的高光 + 一圈亮边，
+   所以**颜色看得出来、形状也看得出来**，不是全透明。
+   文字颜色由 JS 按亮度算好注入 --t（02 文档 4.1）。 */
 .block {
     position: absolute;
     left: 1px;
     right: 1px;
-    border-radius: 6px;
-    border: 1px solid rgba(31, 41, 55, .12);
+    border-radius: 12px;
     padding: 3px 5px;
     overflow: hidden;
     cursor: pointer;
@@ -462,8 +549,28 @@ body.nav-collapsed .rail button {
     font-weight: 600;
     line-height: 1.25;
     word-break: break-all;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, .20), rgba(255, 255, 255, .02) 50%),
+        rgba(var(--c, 47, 111, 237), var(--b-alpha));
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
+    backdrop-filter: blur(8px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, .6);
+    box-shadow:
+        0 6px 18px rgba(31, 60, 130, .16),
+        0 0 0 1px rgba(31, 41, 55, .06),
+        inset 0 1px 0 rgba(255, 255, 255, .65);
+    color: var(--t, #fff);
+    /* 半透明底色上文字容易发飘，加一层很淡的影把字托住 */
+    text-shadow: 0 1px 2px rgba(31, 41, 55, .22);
+    transition: transform .12s, box-shadow .12s;
 }
-.block:hover { filter: brightness(.96); }
+.block:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 10px 24px rgba(31, 60, 130, .22),
+        0 0 0 1px rgba(31, 41, 55, .08),
+        inset 0 1px 0 rgba(255, 255, 255, .7);
+}
 
 /* 长课名截断：方块里最多铺几行，多的省略号（P3） */
 .block .block-name {
@@ -529,21 +636,50 @@ body.nav-collapsed .rail button {
     display: inline-block;
     margin-right: 6px;
     padding: 1px 8px;
-    border: 1px solid var(--line);
+    border: 1px solid rgba(255, 255, 255, .6);
+    background: rgba(255, 255, 255, .45);
     border-radius: 10px;
     font-size: 12px;
     color: var(--muted);
 }
 
+/* ------------------------------------- 降级：不支持毛玻璃的浏览器 */
+
+/* 没有 backdrop-filter（老浏览器 / 老安卓）时，玻璃会糊成一片看不清的灰，
+   所以退回不透明白：形状、颜色、可读性都保住，只是没有玻璃感。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .sidebar,
+    .mobile-topbar,
+    .card,
+    .modal,
+    .grid-area,
+    .sched-head,
+    .collapse-btn,
+    body.nav-collapsed .rail button {
+        background: rgba(255, 255, 255, .94);
+    }
+    .btn, .mobile-topbar .hamburger { background: rgba(255, 255, 255, .88); }
+    .field input[type=text],
+    .field input[type=number],
+    .field input[type=date],
+    .field input[type=time],
+    .field select,
+    .field textarea { background: #fff; }
+    .block { background: rgba(var(--c, 47, 111, 237), .92); }
+    .chip { background: rgba(255, 255, 255, .9); }
+}
+
 /* ------------------------------------------------- 手机 / 平板 */
 
 @media (max-width: 1023px) {
+    .shell { gap: 12px; padding: 12px; }
     .sidebar { width: 22%; min-width: 180px; }
-    .content { padding: 16px; }
+    .content { padding: 4px 2px 24px; }
 }
 
 @media (max-width: 767px) {
-    .mobile-topbar { display: flex; }
+    /* 顶栏也是玻璃的，跟下面的内容左右对齐 */
+    .mobile-topbar { display: flex; margin: 10px 10px 0; }
 
     /* 菜单栏变抽屉，默认收起，从左侧滑出，盖在内容上 */
     .sidebar {
@@ -555,16 +691,19 @@ body.nav-collapsed .rail button {
         max-width: 280px;
         min-width: 0;
         z-index: 50;
+        border-radius: 0 var(--radius) var(--radius) 0;
         transform: translateX(-102%);
         transition: transform .2s ease-out;
         box-shadow: 0 0 24px rgba(31, 41, 55, .2);
+        overflow-y: auto;
     }
     body.drawer-open .sidebar { transform: translateX(0); }
     body.drawer-open .overlay { display: block; }
     body.nav-collapsed .sidebar { display: flex; }   /* 手机上用抽屉，不用收起逻辑 */
     body.nav-collapsed .rail { display: none; }
 
-    .content { padding: 12px 10px 32px; }
+    .shell { flex-direction: column; gap: 10px; padding: 10px; }
+    .content { padding: 0 0 24px; }
 
     .page-title { font-size: 17px; }
     .sem-card { flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -574,8 +713,18 @@ body.nav-collapsed .rail button {
     .course-card { padding-left: 28px; }
 
     /* 课表 7 列压缩变瘦 */
+    .grid-area { padding: 10px 8px 8px; }
     .grid-cols, .grid-labels { gap: 2px; }
-    .block { font-size: 11px; padding: 2px 2px; left: 0; right: 0; border-radius: 4px; }
+    .block {
+        font-size: 11px;
+        padding: 2px 2px;
+        left: 0;
+        right: 0;
+        border-radius: 8px;
+        /* 手机上 7 列 × 每块都做模糊，低端机会卡：只保留半透明，不做毛玻璃 */
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
     .grid-labels div { font-size: 11px; }
     .sched-head { flex-wrap: wrap; }
     .sched-head .center { order: 3; width: 100%; }

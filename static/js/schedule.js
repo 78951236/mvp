@@ -17,13 +17,27 @@
         return window.innerWidth < NARROW ? (block.short_name || block.name) : block.name;
     }
 
+    // 课程色 #RRGGBB → "r,g,b"，给 CSS 的 rgba(var(--c), .62) 用。
+    // 玻璃方块的颜色靠这个变量透出来（02 文档 4.1）。
+    function rgbTriple(hex) {
+        const h = String(hex || '').trim().replace('#', '');
+        let r, g, b;
+        if (h.length === 3) {
+            r = parseInt(h[0] + h[0], 16); g = parseInt(h[1] + h[1], 16); b = parseInt(h[2] + h[2], 16);
+        } else if (h.length === 6) {
+            r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+        }
+        if ([r, g, b].some((v) => !Number.isFinite(v))) return '47,111,237';   // 兜底=主蓝
+        return r + ',' + g + ',' + b;
+    }
+
     function blockHtml(block) {
         const top = block.top_pct;
         const height = block.height_pct;
         return '<div class="block" data-id="' + block.id + '"' +
             ' style="top:' + top + '%;height:' + height + '%;' +
-            'background:' + App.escapeHtml(block.color) + ';' +
-            'color:' + App.escapeHtml(block.text_color) + ';"' +
+            '--c:' + rgbTriple(block.color) + ';' +
+            '--t:' + App.escapeHtml(block.text_color) + ';"' +
             ' title="' + App.escapeHtml(block.name) + '">' +
             '<span class="block-name">' + App.escapeHtml(blockLabel(block)) + '</span>' +
             '</div>';
